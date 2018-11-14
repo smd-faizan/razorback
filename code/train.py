@@ -17,17 +17,17 @@ from model import MyModelGenerator
 from test import tester
 from datetime import datetime
 
-TEST_FILENAME = "/Users/s0f00xx/PycharmProjects/razorback/data/test_simplified.csv"
-TRAIN_FOLDER = "/Users/s0f00xx/PycharmProjects/razorback/data/train_simplified/"
+TEST_FILENAME = "../data/test_simplified.csv"
+TRAIN_FOLDER = "../data/train_simplified/"
 MODEL_SAVE_PATH = "../savedModels/model-"
 EXTENSION = ".csv"
-IMAGES_PER_CLASS = 8 # Integer.max for all images
-imheight = 32
-imwidth = 32
+IMAGES_PER_CLASS = sys.maxsize # Integer.max for all images
+imheight = 256
+imwidth = 256
 num_classes = 340
 # Training parameters
 BATCH_SIZE = 32
-EPOCHS = 1
+EPOCHS = 22
 
 def draw_it(strokes):
     image = Image.new("P", (256,256), color=255)  # BACKGROUND COLOR is BLACK?
