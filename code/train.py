@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from graphics import *
+# from graphics import *
 import csv
 import json
 
@@ -18,12 +18,13 @@ from model import MyModelGenerator
 
 from test import tester
 from datetime import datetime
+import sys,os
 
 TEST_FILENAME = "../data/test_simplified.csv"
 TRAIN_FOLDER = "../data/train_simplified/"
 MODEL_SAVE_PATH = "../savedModels/model-"
 EXTENSION = ".csv"
-IMAGES_PER_CLASS = sys.maxsize # Integer.max for all images
+IMAGES_PER_CLASS = sys.maxint # Integer.max for all images
 imheight = 256
 imwidth = 256
 num_classes = 340
@@ -39,38 +40,11 @@ def draw_it(strokes):
         for i in xrange(0, len(stroke.points) - 1):
             A = stroke.points[i]
             B = stroke.points[i + 1]
-            line = Line(Point(A.x, A.y), Point(B.x, B.y))
+            # line = Line(Point(A.x, A.y), Point(B.x, B.y))
             image_draw.line([A.x, A.y, B.x, B.y], fill=0, width=5)   # FILL THE LINE WITH WHITE COLOR?, width=5
     image = image.resize((imheight, imwidth))
     return np.array(image)/255.
 
-def visualize(key, value):
-    win = GraphWin('Drawing-' + key, 256, 256)  # give title and dimensions
-    print "NUmber of strokes in this drawing " + str(len(value.strokes))
-    j = 1
-    label = Text(Point(100, 120), 'True' if value.recognized else 'False')
-    label.draw(win)
-    for stroke in value.strokes:
-        for i in xrange(0, len(stroke.points) - 1):
-            A = stroke.points[i]
-            B = stroke.points[i + 1]
-            line = Line(Point(A.x, A.y), Point(B.x, B.y))
-            line.draw(win)
-        print "drew stroke" + str(j)
-        j += 1
-
-    win.getMouse()
-    win.close()
-
-def visualize_np_array(np_array, title):
-    win = GraphWin('Drawing-' + title, 256, 256)  # give title and dimensions
-    for x in xrange(np_array.shape[0]):
-        for y in xrange(np_array.shape[1]):
-            if(np_array[x][y]==1.):
-                pt = Point(x, y)
-                # pt.draw(win) # TAKES A LOT OF TIME
-    win.getMouse()
-    win.close()
 
 def load_file(filename):
     d = {}
