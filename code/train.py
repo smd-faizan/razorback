@@ -82,6 +82,8 @@ def load_file(filename):
         # visualize_np_array(np_image, key)
         result.append(np_image)
 
+    del d
+
     return np.array(result)
 
 
