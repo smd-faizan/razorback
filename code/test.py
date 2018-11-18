@@ -52,3 +52,9 @@ def tester(model, TEST_FILENAME, TRAIN_FOLDER, imheight, imwidth):
     sub.to_csv('subcnn_small.csv')
     sub.head()
 
+def main():
+    # write tests
+    print "test"
+
+if __name__ == '__main__':
+    main()
