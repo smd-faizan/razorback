@@ -25,9 +25,11 @@ TRAIN_FOLDER = "../data/train_simplified/"
 MODEL_SAVE_PATH = "../savedModels/model-"
 EXTENSION = ".csv"
 # IMAGES_PER_CLASS = sys.maxint # Integer.max for all images
-IMAGES_PERCENTAGE_PER_BATCH = 5
-STEPS_PER_EPOCH=18
+IMAGES_PERCENTAGE_PER_BATCH = 1
+STEPS_PER_EPOCH=90
 VALIDATION_PERCENTAGE = 10
+VALIDATION_IMAGES_PERCENTAGE_PER_BATCH = 5
+VALIDATION_STEPS = 20
 imheight = 256
 imwidth = 256
 num_classes = 340
@@ -36,7 +38,8 @@ BATCH_SIZE = 32
 EPOCHS = 22
 
 
-
+numberOfLines = []
+file_pointers = []
 
 def read_line(line, fileNumber):
     line = line[line.index("\"")+1:line.rfind("\"")]
@@ -67,9 +70,50 @@ def draw_it(strokes):
     image = image.resize((imheight, imwidth))
     return np.array(image)/255.
 
-numberOfLines = []
 
-def load_file_validation(filename, i, validation_percentage):
+# def load_file_validation(filename, i, validation_percentage):
+#     wcFilename = filename
+#     if wcFilename.find(" ")>0:
+#         while wcFilename.find(" ")>0:
+#             idx = wcFilename.find(" ")
+#             wcFilename = wcFilename[0:idx] + "\\" + wcFilename[idx+1:]
+#         wcFilename = wcFilename.replace("\\", "\\" + " ")
+#     Number_lines = int((subprocess.Popen('wc -l {0}'.format(wcFilename), shell=True, stdout=subprocess.PIPE).stdout).readlines()[0].split()[0])
+#     numberOfLines.append(Number_lines)
+#     cutpt = int(validation_percentage * (Number_lines/100))
+#
+#     result = []
+#     fp = open(filename, "r")
+#     for n in xrange(cutpt):
+#         content = fp.readline()
+#         if(content.find("\"")<0):
+#             continue
+#         x = read_line(content,i)
+#         result.append(x)
+#     print "loaded "+ str(cutpt) + " lines"
+#     endOffset = fp.tell()
+#     fp.close()
+#     return np.array(result), endOffset
+#
+#
+#
+# def load_files_for_validation():
+#     i=0
+#     grand = []
+#     for filename in os.listdir(TRAIN_FOLDER):
+#         if filename.endswith(EXTENSION):
+#             images, endOffset = load_file_validation(TRAIN_FOLDER+filename, i, VALIDATION_PERCENTAGE)
+#             file_pointers.append(endOffset)
+#             labelarray = np.full((images.shape[0], 1), i)
+#             images = images.reshape(images.shape[0], -1)
+#             images = np.concatenate((labelarray, images), axis=1)
+#             for image in images:
+#                 grand.append(image)
+#             i += 1
+#
+#     return grand
+
+def load_number_of_lines_and_find_offset(filename, i, validation_percentage):
     wcFilename = filename
     if wcFilename.find(" ")>0:
         while wcFilename.find(" ")>0:
@@ -80,37 +124,72 @@ def load_file_validation(filename, i, validation_percentage):
     numberOfLines.append(Number_lines)
     cutpt = int(validation_percentage * (Number_lines/100))
 
-    result = []
     fp = open(filename, "r")
     for n in xrange(cutpt):
-        content = fp.readline()
-        if(content.find("\"")<0):
-            continue
-        x = read_line(content,i)
-        result.append(x)
-    print "loaded "+ str(cutpt) + " lines"
+        fp.readline()
+
+    print "read "+ str(cutpt) + " lines"
     endOffset = fp.tell()
     fp.close()
-    return np.array(result), endOffset
+    return endOffset
 
 
 
-def load_files_for_validation():
-    file_pointers = []
+def load_filesPointers():
     i=0
-    grand = []
     for filename in os.listdir(TRAIN_FOLDER):
         if filename.endswith(EXTENSION):
-            images, endOffset = load_file_validation(TRAIN_FOLDER+filename, i, VALIDATION_PERCENTAGE)
+            endOffset = load_number_of_lines_and_find_offset(TRAIN_FOLDER+filename, i, VALIDATION_PERCENTAGE)
             file_pointers.append(endOffset)
-            labelarray = np.full((images.shape[0], 1), i)
-            images = images.reshape(images.shape[0], -1)
-            images = np.concatenate((labelarray, images), axis=1)
-            for image in images:
-                grand.append(image)
             i += 1
+    return
 
-    return grand, file_pointers
+
+
+def generate_validation_arrays_from_file(file_pointers, numberOfLines):
+
+    current_file_pointers = []
+    for k in range(len(file_pointers)):
+        current_file_pointers.append(0)
+
+    while 1:
+        i = 0
+        grand = []
+        for filename in os.listdir(TRAIN_FOLDER):
+            result = []
+            if filename.endswith(EXTENSION):
+                fp = open(TRAIN_FOLDER+filename)
+                fp.seek(current_file_pointers[i])
+                for n in xrange(int((numberOfLines[i]/100)*VALIDATION_IMAGES_PERCENTAGE_PER_BATCH)):
+                    content = fp.readline()
+                    if (fp.tell()>=file_pointers[i]):
+                        fp.seek(0)
+                        continue
+                    x = read_line(content, i)
+                    y = keras.utils.to_categorical(i, num_classes)
+                    result.append(x)
+
+                    # create numpy arrays of input data
+                    # and labels, from each line in the file
+                    # x, y = process_line(line)
+                    # img = load_images(x)
+                    # yield (img, y)
+                current_file_pointers[i] = fp.tell()
+                fp.close()
+                images = np.array(result)
+                labelarray = np.full((images.shape[0], 1), i)
+                images = images.reshape(images.shape[0], -1)
+                images = np.concatenate((labelarray, images), axis=1)
+                for image in images:
+                    grand.append(image)
+                i += 1
+        grand = np.array(grand)
+        shuffle(grand)
+        X_train, Y_train = divide(grand)
+
+        y_train = keras.utils.to_categorical(Y_train, num_classes)
+        x_train = X_train.reshape(X_train.shape[0], imheight, imwidth, 1)
+        yield (x_train, y_train)
 
 def generate_arrays_from_file(file_pointers, numberOfLines):
 
@@ -173,18 +252,16 @@ def top_3_accuracy(x, y):
     return t3
 
 def main():
-    grand, filePointers = load_files_for_validation()
-    grand = np.array(grand)
-    shuffle(grand)
-    X_val, Y_val = divide(grand)
+    load_filesPointers()
+
 
     # y_train = keras.utils.to_categorical(Y_train, num_classes)
     # X_train = X_train.reshape(X_train.shape[0], imheight, imwidth, 1)
-    y_val = keras.utils.to_categorical(Y_val, num_classes)
-    X_val = X_val.reshape(X_val.shape[0], imheight, imwidth, 1)
-
-    print(y_val.shape, "\n",
-          X_val.shape)
+    # y_val = keras.utils.to_categorical(Y_val, num_classes)
+    # X_val = X_val.reshape(X_val.shape[0], imheight, imwidth, 1)
+    #
+    # print(y_val.shape, "\n",
+    #       X_val.shape)
 
     reduceLROnPlat = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3,
                                        verbose=1, mode='auto', min_delta=0.005, cooldown=5, min_lr=0.0001)
@@ -198,10 +275,11 @@ def main():
                   optimizer='adam',
                   metrics=['accuracy', top_3_accuracy])
 
-    model.fit_generator(generate_arrays_from_file(filePointers, numberOfLines),
+    model.fit_generator(generate_arrays_from_file(file_pointers, numberOfLines),
               steps_per_epoch=STEPS_PER_EPOCH,
               epochs=EPOCHS,
-              validation_data=(X_val, y_val),
+              validation_data=generate_validation_arrays_from_file(file_pointers, numberOfLines),
+              validation_steps=VALIDATION_STEPS,
               callbacks=callbacks,
               verbose=1)
 
