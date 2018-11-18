@@ -33,7 +33,7 @@ imwidth = 256
 num_classes = 340
 # Training parameters
 BATCH_SIZE = 32
-EPOCHS = 1
+EPOCHS = 22
 
 
 
